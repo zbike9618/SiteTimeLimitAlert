@@ -1,7 +1,4 @@
 // popup.js
-window.onerror = function (message, source, lineno, colno, error) {
-  alert('Popup Error: ' + message + '\nLine: ' + lineno);
-};
 document.addEventListener('DOMContentLoaded', () => {
   const domainInput = document.getElementById('domain');
   const limitInput = document.getElementById('limit');

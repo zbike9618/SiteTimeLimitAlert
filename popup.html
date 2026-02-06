@@ -8,6 +8,11 @@
 </head>
 
 <body>
+  <script>
+    window.onerror = function (message, source, lineno, colno, error) {
+      alert('Popup Init Error: ' + message + '\nLine: ' + lineno);
+    };
+  </script>
   <h1>閲覧時間制限設定</h1>
 
   <div class="input-group">
