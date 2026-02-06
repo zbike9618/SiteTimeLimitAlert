@@ -102,6 +102,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             handleTick(request.domain, sender, sendResponse);
         } else if (request.action === 'getRealtimeStats') {
             sendResponse({ stats: memoryStats, settings: settingsCache, snoozeState: snoozeState });
+        } else if (request.action === 'extendLimit') {
+            const domain = request.domain;
+            const minutes = parseInt(request.minutes || 5, 10);
+
+            // Determine if global or local
+            // Ideally we check request.type, or fallback to domain
+            let targetKey = domain;
+            if (request.type === 'global') {
+                targetKey = '__global_limit__';
+            }
+
+            if (settingsCache[targetKey]) {
+                const currentLimit = parseInt(settingsCache[targetKey].limit, 10);
+                settingsCache[targetKey].limit = currentLimit + minutes;
+
+                // Save to storage
+                chrome.storage.local.set({ settings: settingsCache }, () => {
+                    sendResponse({ success: true, newLimit: settingsCache[targetKey].limit });
+                });
+            } else {
+                console.error(`Setting for ${targetKey} not found during extension.`);
+                sendResponse({ success: false, error: '設定が見つかりませんでした (Setting not found)' });
+            }
+            return true; // async
         } else if (request.action === 'snooze') {
             // Check if we need to snooze global
             // The request comes with 'domain'. If the user was blocked by 'global', we might want to snooze global.

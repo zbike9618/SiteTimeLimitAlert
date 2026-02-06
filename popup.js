@@ -11,7 +11,23 @@ document.addEventListener('DOMContentLoaded', () => {
   updateView();
 
   // 1秒ごとに表示更新（リアルタイム性）
+  // 1秒ごとに表示更新（リアルタイム性）
   setInterval(updateView, 1000);
+
+  // Enter Key Navigation
+  domainInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      limitInput.focus();
+    }
+  });
+
+  limitInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addBtn.click();
+    }
+  });
 
   // 追加・更新ボタンの処理 (Below)
 

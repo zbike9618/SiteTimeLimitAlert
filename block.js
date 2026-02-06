@@ -23,25 +23,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // スヌーズボタン
-    document.getElementById('snoozeBtn').addEventListener('click', () => {
+    // 延長ボタン
+    document.getElementById('extendBtn').addEventListener('click', () => {
         if (!domain) return;
 
-        // バックグラウンドにスヌーズ要求
+        const minutes = parseInt(document.getElementById('extendMinutes').value, 10);
+
+        // バックグラウンドに延長（リミット変更）要求
         chrome.runtime.sendMessage({
-            action: 'snooze',
+            action: 'extendLimit',
             domain: domain,
-            type: type
-        }, () => {
-            // 元のURLに戻る
-            if (originalUrl && originalUrl !== 'undefined') {
-                window.location.href = originalUrl;
+            type: type,
+            minutes: minutes
+        }, (response) => {
+            if (response && response.success) {
+                // 元のURLに戻る
+                if (originalUrl && originalUrl !== 'undefined') {
+                    window.location.href = originalUrl;
+                } else {
+                    alert(`${minutes}分 延長しました。\nページを再読み込みしてください。`);
+                    history.back();
+                }
             } else {
-                // 履歴を戻るが、ブロックページが履歴に残るとループする恐れがあるので
-                // 閉じるか、新しいタブで開くなどが安全だが、今回はhistory.backを試す
-                // または window.close() してユーザーに開き直してもらう
-                alert("スヌーズしました。ページを再読み込みするか、再度アクセスしてください。");
-                history.back();
+                const reason = response ? response.error : "Unknown Error";
+                alert(`設定の更新に失敗しました。\n理由: ${reason}`);
             }
         });
     });

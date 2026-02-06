@@ -83,7 +83,18 @@
         <div>
             <!-- タブを閉じるのはJSで制限がある場合が多いが試みる -->
             <button id="closeBtn" class="btn">タブを閉じる</button>
-            <button id="snoozeBtn" class="btn btn-snooze">あと5分だけ延長</button>
+
+            <div style="margin-top: 15px; background: #fff3e0; padding: 10px; border-radius: 5px;">
+                <label for="extendMinutes" style="font-size:14px; color:#ef6c00;">延長時間: </label>
+                <select id="extendMinutes"
+                    style="padding: 5px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc;">
+                    <option value="1">1分</option>
+                    <option value="3">3分</option>
+                    <option value="5" selected>5分</option>
+                    <option value="10">10分</option>
+                </select>
+                <button id="extendBtn" class="btn btn-snooze" style="font-size: 14px; padding: 8px 15px;">延長する</button>
+            </div>
         </div>
     </div>
     <script src="block.js"></script>
