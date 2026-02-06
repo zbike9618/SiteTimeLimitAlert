@@ -1,22 +1,21 @@
 html {
+  min-height: 500px;
+  width: 400px;
   overflow-y: auto;
-  /* height: 100%; Removed to allow proper scrolling in popup */
 }
 
 body {
-  width: 400px;
-  /* Allow height to grow */
-  /* Allow height to grow */
   min-height: 500px;
+  width: 100%;
+  margin: 0;
   padding: 15px;
+  box-sizing: border-box;
+  /* Ensure padding doesn't affect width calculation */
   font-family: 'Helvetica Neue', Arial, sans-serif;
   color: #333;
-  margin: 0;
   background-color: #f9f9f9;
-  /* Ensure main body doesn't horizontal scroll */
   overflow-x: hidden;
-  padding-bottom: 60px;
-  /* Extra padding to ensure bottom is visible */
+  padding-bottom: 80px;
 }
 
 h1 {

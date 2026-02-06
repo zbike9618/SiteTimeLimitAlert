@@ -259,3 +259,42 @@ chrome.storage.onChanged.addListener((changes, area) => {
         }
     }
 });
+
+// Immediate Global Limit Check on Navigation/Activation
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url && !tab.url.startsWith('chrome://') && !tab.url.includes('block.html')) {
+        checkGlobalLimit(tab);
+    }
+});
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+    chrome.tabs.get(activeInfo.tabId, (tab) => {
+        if (chrome.runtime.lastError || !tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.includes('block.html')) return;
+        checkGlobalLimit(tab);
+    });
+});
+
+function checkGlobalLimit(tab) {
+    if (!settingsCache['__global_limit__']) return;
+
+    const globalSetting = settingsCache['__global_limit__'];
+    const globalLimitSeconds = globalSetting.limit * 60;
+    const globalUsedSeconds = Object.values(memoryStats).reduce((a, b) => a + b, 0);
+
+    if (globalUsedSeconds > globalLimitSeconds) {
+        // Check Snooze
+        const snoozeEndGlobal = snoozeState['__global_limit__'];
+        if (snoozeEndGlobal && Date.now() < snoozeEndGlobal) return;
+
+        // Also check specific domain snooze
+        try {
+            const url = new URL(tab.url);
+            const domain = url.hostname;
+            const snoozeEndDomain = snoozeState[domain];
+            if (snoozeEndDomain && Date.now() < snoozeEndDomain) return;
+        } catch (e) { }
+
+        const redirectUrl = chrome.runtime.getURL(`block.html?domain=GLOBAL_LIMIT&type=global&url=${encodeURIComponent(tab.url)}`);
+        chrome.tabs.update(tab.id, { url: redirectUrl }).catch(() => { });
+    }
+}
