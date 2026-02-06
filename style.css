@@ -1,20 +1,16 @@
-html {
-  width: 400px;
-  height: 600px;
-  /* Explicit fixed height to prevent collapse */
-}
-
 body {
   width: 400px;
-  height: 600px;
+  height: 500px;
+  /* Revert to 500px which worked */
   margin: 0;
-  padding: 15px;
+  padding: 10px;
   box-sizing: border-box;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  color: #333;
   background-color: #f9f9f9;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
   overflow-x: hidden;
-  padding-bottom: 80px;
+  overflow-y: auto;
+  /* Try auto again with correct height */
+  padding-bottom: 60px;
 }
 
 h1 {
@@ -126,7 +122,6 @@ button.edit-btn:hover {
 
 .site-item {
   background: #fff;
-  border: 1px solid #eee;
   padding: 10px;
   margin-bottom: 8px;
   border-radius: 4px;
