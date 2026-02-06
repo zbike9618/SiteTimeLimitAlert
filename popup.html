@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <title>サイト制限設定</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <h1>閲覧時間制限設定</h1>
+
+  <div class="input-group">
+    <div style="display:flex; align-items:center; margin-bottom:10px;">
+      <input type="checkbox" id="isGlobal" style="width:auto; margin-right:5px;">
+      <label for="isGlobal" style="margin:0; font-weight:normal;">全体制限 (全サイト合計) を設定</label>
+    </div>
+
+    <div id="domainInputGroup">
+      <label for="domain">サイトドメイン (例: youtube.com)</label>
+      <input type="text" id="domain" placeholder="例: youtube.com">
+    </div>
+
+    <label for="limit">制限時間 (分)</label>
+    <input type="number" id="limit" placeholder="30" min="1">
+
+    <button id="addBtn">追加・更新</button>
+  </div>
+
+  <div id="status"></div>
+
+  <hr>
+
+  <div id="settingsList"></div>
+
+  <div class="chart-container">
+    <div class="chart-title">このドメインの過去7日間</div>
+    <div id="chartStats" class="chart-bar-container">
+      <!-- JSで描画 -->
+    </div>
+    <div id="chartLabels" style="display:flex; justify-content:space-between; margin-top:2px;">
+      <!-- JSで描画 -->
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

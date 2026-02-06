@@ -1,0 +1,204 @@
+html {
+  overflow-y: auto;
+  /* height: 100%; Removed to allow proper scrolling in popup */
+}
+
+body {
+  width: 400px;
+  /* Allow height to grow */
+  /* Allow height to grow */
+  min-height: 500px;
+  padding: 15px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: #333;
+  margin: 0;
+  background-color: #f9f9f9;
+  /* Ensure main body doesn't horizontal scroll */
+  overflow-x: hidden;
+  padding-bottom: 60px;
+  /* Extra padding to ensure bottom is visible */
+}
+
+h1 {
+  font-size: 16px;
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #4285f4;
+}
+
+.input-group {
+  margin-bottom: 15px;
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background-color: #357ae8;
+}
+
+/* ボタンラッパー */
+button.delete-btn,
+button.edit-btn {
+  width: auto;
+  font-size: 11px;
+  padding: 5px 10px;
+  margin-left: 5px;
+}
+
+button.delete-btn {
+  background-color: #ff5252;
+}
+
+button.delete-btn:hover {
+  background-color: #d32f2f;
+}
+
+button.edit-btn {
+  background-color: #2196f3;
+}
+
+button.edit-btn:hover {
+  background-color: #1976d2;
+}
+
+#status {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #4caf50;
+  height: 15px;
+}
+
+/* List Container Scroll Fix */
+#settingsList {
+  max-height: 200px;
+  /* Limit height to prevent pushing graph off */
+  overflow-y: auto;
+  /* Enable vertical scroll */
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  /* Custom Scrollbar for nicer look */
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f0f0f0;
+}
+
+#settingsList::-webkit-scrollbar {
+  width: 8px;
+}
+
+#settingsList::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+#settingsList::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+}
+
+.site-item {
+  background: #fff;
+  border: 1px solid #eee;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+.site-item strong {
+  display: block;
+  font-size: 14px;
+}
+
+.site-item span {
+  font-size: 12px;
+  color: #666;
+}
+
+/* グラフ用スタイル */
+.chart-container {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+  /* Ensure graph stays at bottom or visible */
+}
+
+.chart-bar-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 100px;
+  margin-top: 10px;
+  border-bottom: 1px solid #ccc;
+}
+
+.chart-bar {
+  width: 12%;
+  background-color: #4285f4;
+  border-radius: 3px 3px 0 0;
+  position: relative;
+  cursor: title;
+}
+
+.chart-label {
+  text-align: center;
+  font-size: 9px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #555;
+  text-align: center;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+  margin: 15px 0;
+}
+
+#chartLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  height: 15px;
+  /* Prevent collapse */
+  overflow: hidden;
+}
+
+body {
+  padding-bottom: 30px;
+  /* Ensure bottom content isn't cut off */
+}

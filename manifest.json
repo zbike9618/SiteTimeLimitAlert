@@ -1,0 +1,55 @@
+{
+    "manifest_version": 3,
+    "name": "サイト閲覧時間制限アラート",
+    "version": "1.0",
+    "description": "特定のサイトを指定時間以上閲覧するとアラートを表示します。",
+    "permissions": [
+        "storage",
+        "tabs",
+        "scripting",
+        "alarms",
+        "contextMenus"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon.jpg",
+            "48": "icons/icon.jpg",
+            "128": "icons/icon.jpg"
+        }
+    },
+    "icons": {
+        "16": "icons/icon.jpg",
+        "48": "icons/icon.jpg",
+        "128": "icons/icon.jpg"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "block.html",
+                "block.js",
+                "style.css"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}
