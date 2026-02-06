@@ -1,15 +1,51 @@
+:root {
+  --bg-color: #f9f9f9;
+  --text-color: #333;
+  --card-bg: #fff;
+  --border-color: #eee;
+  --input-border: #ddd;
+  --input-bg: #fff;
+  --button-primary: #4285f4;
+  --button-hover: #357ae8;
+  --status-text: #4caf50;
+  --limit-label: #666;
+  --shadow: rgba(0, 0, 0, 0.1);
+  --scrollbar-track: #f0f0f0;
+  --scrollbar-thumb: #ccc;
+  --disabled-bg: #f0f0f0;
+  --disabled-text: #aaa;
+}
+
+[data-theme="dark"] {
+  --bg-color: #202124;
+  --text-color: #e8eaed;
+  --card-bg: #292a2d;
+  --border-color: #3c4043;
+  --input-border: #5f6368;
+  --input-bg: #303134;
+  --button-primary: #8ab4f8;
+  --button-hover: #aecbfa;
+  --status-text: #81c995;
+  --limit-label: #9aa0a6;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --scrollbar-track: #202124;
+  --scrollbar-thumb: #5f6368;
+  --disabled-bg: #3c4043;
+  --disabled-text: #80868b;
+}
+
 body {
   width: 400px;
   height: 500px;
-  /* Revert to 500px which worked */
+  /* 500px fixed height */
   margin: 0;
   padding: 10px;
   box-sizing: border-box;
-  background-color: #f9f9f9;
+  background-color: var(--bg-color);
+  color: var(--text-color);
   font-family: 'Helvetica Neue', Arial, sans-serif;
   overflow-x: hidden;
   overflow-y: auto;
-  /* Try auto again with correct height */
   padding-bottom: 60px;
 }
 
@@ -18,15 +54,15 @@ h1 {
   margin-top: 0;
   margin-bottom: 15px;
   text-align: center;
-  color: #4285f4;
+  color: var(--button-primary);
 }
 
 .input-group {
   margin-bottom: 15px;
-  background: #fff;
+  background: var(--card-bg);
   padding: 10px;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px var(--shadow);
 }
 
 label {
@@ -34,6 +70,7 @@ label {
   margin-bottom: 5px;
   font-size: 12px;
   font-weight: bold;
+  color: var(--text-color);
 }
 
 input[type="text"],
@@ -42,23 +79,33 @@ input[type="number"] {
   padding: 8px;
   box-sizing: border-box;
   margin-bottom: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--text-color);
   border-radius: 4px;
 }
 
 button {
   width: 100%;
   padding: 10px;
-  background-color: #4285f4;
-  color: white;
+  background-color: var(--button-primary);
+  color: var(--bg-color)==#202124 ? #202124: white;
+  /* Invert text color logic roughly */
+  color: #fff;
+  /* Simplify for now, usually white text on primary button works */
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
 }
 
+[data-theme="dark"] button {
+  color: #202124;
+  /* Dark text on light blue button in dark mode */
+}
+
 button:hover {
-  background-color: #357ae8;
+  background-color: var(--button-hover);
 }
 
 /* ボタンラッパー */
@@ -68,6 +115,8 @@ button.edit-btn {
   font-size: 11px;
   padding: 5px 10px;
   margin-left: 5px;
+  color: #fff !important;
+  /* Always white text for these */
 }
 
 button.delete-btn {
@@ -90,21 +139,18 @@ button.edit-btn:hover {
   text-align: center;
   margin-top: 10px;
   font-size: 12px;
-  color: #4caf50;
+  color: var(--status-text);
   height: 15px;
 }
 
 /* List Container Scroll Fix */
 #settingsList {
   max-height: 200px;
-  /* Limit height to prevent pushing graph off */
   overflow-y: auto;
-  /* Enable vertical scroll */
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
-  /* Custom Scrollbar for nicer look */
   scrollbar-width: thin;
-  scrollbar-color: #ccc #f0f0f0;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 #settingsList::-webkit-scrollbar {
@@ -112,37 +158,39 @@ button.edit-btn:hover {
 }
 
 #settingsList::-webkit-scrollbar-track {
-  background: #f0f0f0;
+  background: var(--scrollbar-track);
 }
 
 #settingsList::-webkit-scrollbar-thumb {
-  background-color: #ccc;
+  background-color: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 .site-item {
-  background: #fff;
+  background: var(--card-bg);
   padding: 10px;
   margin-bottom: 8px;
   border-radius: 4px;
+  border: 1px solid var(--border-color);
+  /* Add border back for clarity in dark mode */
 }
 
 .site-item strong {
   display: block;
   font-size: 14px;
+  color: var(--text-color);
 }
 
 .site-item span {
   font-size: 12px;
-  color: #666;
+  color: var(--limit-label);
 }
 
 /* グラフ用スタイル */
 .chart-container {
   margin-top: 20px;
   padding-top: 15px;
-  border-top: 1px solid #eee;
-  /* Ensure graph stays at bottom or visible */
+  border-top: 1px solid var(--border-color);
 }
 
 .chart-bar-container {
@@ -151,12 +199,12 @@ button.edit-btn:hover {
   justify-content: space-between;
   height: 100px;
   margin-top: 10px;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .chart-bar {
   width: 12%;
-  background-color: #4285f4;
+  background-color: var(--button-primary);
   border-radius: 3px 3px 0 0;
   position: relative;
   cursor: title;
@@ -165,20 +213,20 @@ button.edit-btn:hover {
 .chart-label {
   text-align: center;
   font-size: 9px;
-  color: #666;
+  color: var(--limit-label);
   margin-top: 5px;
 }
 
 .chart-title {
   font-size: 13px;
   font-weight: bold;
-  color: #555;
+  color: var(--text-color);
   text-align: center;
 }
 
 hr {
   border: 0;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
   margin: 15px 0;
 }
 
@@ -187,11 +235,69 @@ hr {
   justify-content: space-between;
   margin-top: 2px;
   height: 15px;
-  /* Prevent collapse */
   overflow: hidden;
 }
 
 body {
   padding-bottom: 80px;
-  /* Ensure bottom content isn't cut off */
+}
+
+/* Header Toggle */
+.header-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.theme-switch-wrapper {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+}
+
+.theme-switch {
+  display: inline-block;
+  height: 20px;
+  position: relative;
+  width: 40px;
+}
+
+.theme-switch input {
+  display: none;
+}
+
+.slider {
+  background-color: #ccc;
+  bottom: 0;
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  background-color: #fff;
+  bottom: 2px;
+  content: "";
+  height: 16px;
+  left: 2px;
+  position: absolute;
+  transition: .4s;
+  width: 16px;
+  border-radius: 50%;
+}
+
+input:checked+.slider {
+  background-color: var(--button-primary);
+}
+
+input:checked+.slider:before {
+  transform: translateX(20px);
 }

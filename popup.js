@@ -391,4 +391,33 @@ document.addEventListener('DOMContentLoaded', () => {
       statusDiv.textContent = '';
     }, 3000);
   }
+  // Dark Mode Toggle Logic
+  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+
+  function switchTheme(e) {
+    if (e.target.checked) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      chrome.storage.local.set({ darkMode: true });
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      chrome.storage.local.set({ darkMode: false });
+    }
+  }
+
+  toggleSwitch.addEventListener('change', switchTheme);
+
+  // Load saved theme
+  chrome.storage.local.get(['darkMode'], (result) => {
+    if (result.darkMode) {
+      toggleSwitch.checked = true;
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  });
+
+  // Global Limit UI adjustment for dark mode (inline styles needing override)
+  // Note: Some inline styles in toggleGlobalMode might clash. 
+  // We can handle that by relying on CSS classes if possible, but for now strict override.
+  const observer = new MutationObserver(() => {
+    // Optional: Watch for dynamic changes if needed, but CSS variables handle most.
+  });
 });

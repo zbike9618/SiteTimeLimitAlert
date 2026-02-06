@@ -1,5 +1,12 @@
 // block.js
 document.addEventListener('DOMContentLoaded', () => {
+    // Apply Dark Mode if enabled
+    chrome.storage.local.get(['darkMode'], (result) => {
+        if (result.darkMode) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    });
+
     // URLパラメータから元のサイトドメインを取得
     const params = new URLSearchParams(window.location.search);
     const domain = params.get('domain');
