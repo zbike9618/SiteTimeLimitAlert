@@ -139,6 +139,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const settingsList = document.getElementById('settingsList');
       if (!settingsList) return;
 
+      // START FIX: Remove loading message
+      const loadingMsg = Array.from(settingsList.querySelectorAll('p')).find(p => p.textContent.includes('読み込み中'));
+      if (loadingMsg) loadingMsg.remove();
+      // END FIX
+
       // Remove deleted domains
       const existingItems = document.querySelectorAll('.site-item');
       existingItems.forEach(item => {
