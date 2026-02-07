@@ -16,6 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('domainName').textContent = domain || '不明なサイト';
     if (type === 'global') {
         document.querySelector('h1').textContent = "🌏 全体制限を超えました";
+    } else if (type === 'night') {
+        document.querySelector('h1').textContent = "🌙 夜間制限中";
+        const p = document.querySelector('p');
+        // Keep domain but change text
+        // Current HTML structure: <p>サイト: <span id="domainName">...</span><br>設定された閲覧制限時間を超えました。<br>...</p>
+        // We can just replace the text node after the br? Or innerHTML.
+        // Let's replace the whole p content logic or just specific parts.
+        // Simpler: Just innerHTML replacement while keeping structure if possible, or just overwrite description.
+        p.innerHTML = `
+            サイト: <span id="domainName">${domain}</span><br>
+            夜間制限モードが有効です。<br>
+            ゆっくり休んで、明日に備えましょう。
+        `;
     }
 
     // Close Button Handling

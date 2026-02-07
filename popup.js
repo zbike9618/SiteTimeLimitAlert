@@ -493,6 +493,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Night Mode Logic
+  const nightModeCb = document.getElementById('nightModeCb');
+  const nightTimeSettings = document.getElementById('nightTimeSettings');
+  const nightStart = document.getElementById('nightStart');
+  const nightEnd = document.getElementById('nightEnd');
+  const saveNightBtn = document.getElementById('saveNightBtn');
+
+  nightModeCb.addEventListener('change', () => {
+    nightTimeSettings.style.display = nightModeCb.checked ? 'block' : 'none';
+    if (!nightModeCb.checked) {
+      saveNightSettings(false);
+    }
+  });
+
+  saveNightBtn.addEventListener('click', () => {
+    saveNightSettings(true);
+  });
+
+  function saveNightSettings(enabled) {
+    const start = nightStart.value;
+    const end = nightEnd.value;
+    const settings = {
+      enabled: enabled,
+      start: start,
+      end: end
+    };
+    chrome.storage.local.set({ nightMode: settings }, () => {
+      showStatus(enabled ? '夜間制限を保存しました' : '夜間制限を解除しました');
+      if (enabled) updateView();
+    });
+  }
+
+  // Load Night Mode Settings
+  chrome.storage.local.get(['nightMode'], (result) => {
+    const nm = result.nightMode;
+    if (nm) {
+      nightModeCb.checked = nm.enabled;
+      nightTimeSettings.style.display = nm.enabled ? 'block' : 'none';
+      if (nm.start) nightStart.value = nm.start;
+      if (nm.end) nightEnd.value = nm.end;
+    }
+  });
+
   // Global Limit UI adjustment for dark mode (inline styles needing override)
   // Note: Some inline styles in toggleGlobalMode might clash. 
   // We can handle that by relying on CSS classes if possible, but for now strict override.

@@ -19,7 +19,26 @@
       </label>
     </div>
   </div>
-
+  <div class="input-group" style="margin-top: 15px;">
+    <label style="display:flex; align-items:center;">
+      <input type="checkbox" id="nightModeCb" style="width:auto; margin-right:8px;">
+      夜間制限モード (Night Mode)
+    </label>
+    <div id="nightTimeSettings" style="display:none; margin-top:10px;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <label>開始 (Start)</label>
+          <input type="time" id="nightStart" value="22:00">
+        </div>
+        <span style="margin:0 5px; padding-top:18px;">~</span>
+        <div>
+          <label>終了 (End)</label>
+          <input type="time" id="nightEnd" value="06:00">
+        </div>
+      </div>
+      <button id="saveNightBtn" style="margin-top:10px; background-color:#673ab7;">夜間設定を保存</button>
+    </div>
+  </div>
   <div class="input-group">
     <div style="display:flex; align-items:center; margin-bottom:10px;">
       <input type="checkbox" id="isGlobal" style="width:auto; margin-right:5px;">
@@ -38,6 +57,7 @@
   </div>
 
   <div id="status"></div>
+
 
   <hr>
 

@@ -1,6 +1,7 @@
 // bg
 let memoryStats = {};
 let settingsCache = {};
+let nightModeCache = null; // { enabled: bool, start: "HH:MM", end: "HH:MM" }
 let alertedState = {};
 let lastResetDate = '';
 let snoozeState = {};
@@ -67,8 +68,9 @@ if (chrome.alarms) {
 }
 
 async function loadData() {
-    const data = await chrome.storage.local.get(['settings', 'dailyStats', 'lastResetDate']);
+    const data = await chrome.storage.local.get(['settings', 'dailyStats', 'lastResetDate', 'nightMode']);
     settingsCache = data.settings || {};
+    nightModeCache = data.nightMode || null;
     const today = new Date().toLocaleDateString();
     lastResetDate = data.lastResetDate;
 
@@ -110,8 +112,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             const domain = request.domain;
             const minutes = parseInt(request.minutes || 5, 10);
 
+            // Special handling for Night Mode: Extension means Snooze
+            if (request.type === 'night') {
+                snoozeState[domain] = Date.now() + (minutes * 60 * 1000);
+                sendResponse({ success: true, newLimit: 'Snoozed' });
+                return true;
+            }
+
             // Determine if global or local
-            // Ideally we check request.type, or fallback to domain
             let targetKey = domain;
             if (request.type === 'global') {
                 targetKey = '__global_limit__';
@@ -158,6 +166,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 function handleTick(domain, sender, sendResponse) {
     if (!sender.tab) { sendResponse({}); return; }
 
+    // 0. Check Night Mode (Highest Priority? Or should we count stats first?)
+    // Counting stats is fine even if blocked by night mode (to track usage).
+    // Let's count first.
+
     // 1. Increment Count
     memoryStats[domain] = (memoryStats[domain] || 0) + 1;
     const currentSeconds = memoryStats[domain];
@@ -175,26 +187,24 @@ function handleTick(domain, sender, sendResponse) {
         globalUsedSeconds = Object.values(memoryStats).reduce((a, b) => a + b, 0);
     }
 
-    if (!localSetting && !globalSetting) {
+    if (!localSetting && !globalSetting && !nightModeCache?.enabled) {
         chrome.action.setBadgeText({ text: "", tabId: sender.tab.id });
         sendResponse({});
         return;
     }
 
     // 4. Determine Block Status
-    let blockReason = null; // 'site' or 'global'
+    let blockReason = null; // 'site', 'global', 'night'
 
+    // Night Mode Check
+    if (checkNightMode(nightModeCache)) {
+        blockReason = 'night';
+    }
     // Local Limit Check
-    if (localLimitSeconds && currentSeconds > localLimitSeconds) {
+    else if (localLimitSeconds && currentSeconds > localLimitSeconds) {
         blockReason = 'site';
     }
     // Global Limit Check
-    // Note: We check global limit regardless of local limit status (e.g. if local limit is 60min but global is 30min).
-    // If local limit is ALREADY blocking, we prioritize 'site' reason (or maybe global?).
-    // Actually, if both are exceeded, 'global' is a stronger reason? Or 'site'?
-    // Let's stick to: if local is exceeded, block as site. If not, check global.
-    // However, if global limit is exceeded, we MUST block.
-    // If local is exceeded, we are already blocking.
     else if (globalLimitSeconds && globalUsedSeconds > globalLimitSeconds) {
         blockReason = 'global';
     }
@@ -203,6 +213,8 @@ function handleTick(domain, sender, sendResponse) {
     let remaining = 999999;
     if (localLimitSeconds) remaining = Math.min(remaining, localLimitSeconds - currentSeconds);
     if (globalLimitSeconds) remaining = Math.min(remaining, globalLimitSeconds - globalUsedSeconds);
+    // Night mode doesn't really have "remaining" in the same way, unless we calc time to start?
+    // For now, leave badge as based on usage limits.
 
     updateBadge(sender.tab.id, remaining);
 
@@ -211,15 +223,9 @@ function handleTick(domain, sender, sendResponse) {
         // Check Snooze
         const snoozeEndDomain = snoozeState[domain];
         const snoozeEndGlobal = snoozeState['__global_limit__'];
+        const snoozeEndNight = snoozeState['__night_mode__']; // Special key for night mode snooze?
 
-        // If 'site' block and site is snoozed -> allow
-        if (blockReason === 'site' && snoozeEndDomain && Date.now() < snoozeEndDomain) {
-            sendResponse({ block: false });
-            return;
-        }
-        // If 'global' block and global is snoozed -> allow
-        // Also allow if specific domain is snoozed? (Maybe user wants to snooze just this site despite global limit?)
-        // Let's allow specific domain snooze to override global limit for that domain too.
+        // Allow snooze overrides
         if (snoozeEndDomain && Date.now() < snoozeEndDomain) {
             sendResponse({ block: false });
             return;
@@ -228,6 +234,15 @@ function handleTick(domain, sender, sendResponse) {
             sendResponse({ block: false });
             return;
         }
+        // If Night Mode is active, do we allow specific domain snooze to override it?
+        // Yes, if user snoozes "youtube.com", they probably want to see it even at night.
+        // What about global night snooze? 
+        // Let's rely on domain snooze for simplicity for now, OR support night snooze if we add a button for it.
+        // Implementation Plan said "standard block behavior". Block page has "Extend".
+        // If user extends 5 mins, it sends 'snooze' action with domain.
+        // This sets snoozeState[domain].
+        // So the check `snoozeEndDomain` above covers it!
+        // We just need to make sure block.html sends the right request.
 
         const redirectUrl = chrome.runtime.getURL(`block.html?domain=${domain}&type=${blockReason}&url=${encodeURIComponent(sender.tab.url)}`);
 
@@ -237,6 +252,26 @@ function handleTick(domain, sender, sendResponse) {
         sendResponse({ block: true, redirectUrl: redirectUrl });
     } else {
         sendResponse({ block: false });
+    }
+}
+
+function checkNightMode(config) {
+    if (!config || !config.enabled || !config.start || !config.end) return false;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [startH, startM] = config.start.split(':').map(Number);
+    const [endH, endM] = config.end.split(':').map(Number);
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+
+    if (startTotal < endTotal) {
+        // Same day range (e.g. 09:00 - 17:00) - Unlikely for "Night" but possible
+        return currentMinutes >= startTotal && currentMinutes < endTotal;
+    } else {
+        // Crossover (e.g. 22:00 - 06:00)
+        return currentMinutes >= startTotal || currentMinutes < endTotal; // After start OR before end
     }
 }
 
@@ -256,6 +291,7 @@ function updateBadge(tabId, remainingSeconds) {
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
         if (changes.settings) settingsCache = changes.settings.newValue || {};
+        if (changes.nightMode) nightModeCache = changes.nightMode.newValue || null;
         if (changes.dailyStats) {
             const newVal = changes.dailyStats.newValue || {};
             const today = new Date().toLocaleDateString();
