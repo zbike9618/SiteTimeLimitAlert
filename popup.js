@@ -9,16 +9,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const isGlobalCb = document.getElementById('isGlobal');
 
   // 初期表示
-  updateView();
+  // Use async generic immediately invoked function to handle startup
+  (async function startup() {
+    // Force Vivaldi Repaint (Layout Hack)
+    document.body.style.width = '401px';
+    requestAnimationFrame(() => {
+      document.body.style.width = '400px';
+    });
 
-  // 15: 1秒ごとに表示更新（リアルタイム性）
-  const intervalId = setInterval(() => {
-    if (!chrome.runtime?.id) {
-      clearInterval(intervalId);
-      return;
-    }
+    // 1. First immediate render from storage (Optimistic)
+    // We already call loadFromStorage inside updateView, but let's be explicit and safe.
+    await safeUpdateView();
+
+    // 2. Start polling after a short delay to allow Vivaldi to settle
+    setTimeout(() => {
+      // 1秒ごとに表示更新（リアルタイム性）
+      const intervalId = setInterval(safeUpdateView, 1000);
+    }, 1000);
+  })();
+
+  async function safeUpdateView() {
+    if (!chrome.runtime?.id) return;
     updateView();
-  }, 1000);
+  }
+
+  // Old interval logic removed from here
+
 
   // Enter Key Navigation
   domainInput.addEventListener('keydown', (e) => {
@@ -55,92 +71,111 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Global Error Handler for debugging popup failures
+  window.onerror = function (message, source, lineno, colno, error) {
+    const statusDiv = document.getElementById('status');
+    if (statusDiv) {
+      statusDiv.textContent = `Error: ${message}`;
+      statusDiv.style.color = 'red';
+      statusDiv.style.fontSize = '10px';
+    }
+  };
+
   function updateView() {
-    if (!chrome.runtime?.id) return; // Extension context invalid
+    // Strategy: Optimistic Rendering
+    // 1. Immediately load from storage to ensure UI is not blank.
+    loadFromStorage();
 
-    let handled = false;
-    // Timeout for background response (Vivaldi startup measures)
-    const timeoutId = setTimeout(() => {
-      if (!handled) {
-        handled = true;
-        // console.warn('Background timeout, falling back to storage');
-        loadFromStorage();
-      }
-    }, 300);
+    if (!chrome.runtime?.id) return;
 
-    // バックグラウンドから最新のstatsとsettingsを取得
+    // 2. Try to get real-time stats from background
     try {
       chrome.runtime.sendMessage({ action: 'getRealtimeStats' }, (response) => {
-        if (handled) return; // Already handled by timeout
-        clearTimeout(timeoutId);
-        handled = true;
-
         if (chrome.runtime.lastError) {
-          // console.warn('Background connection failed:', chrome.runtime.lastError);
-          loadFromStorage();
+          // Background not ready or context invalid, but valid data already loaded from storage.
+          console.warn('Background check failed:', chrome.runtime.lastError);
           return;
         }
         if (response) {
+          // Update with fresh data (real-time stats)
           renderList(response.settings, response.stats, response.snoozeState);
         }
       });
     } catch (e) {
-      if (!handled) {
-        clearTimeout(timeoutId);
-        handled = true;
-        // console.error('Message send failed:', e);
-        loadFromStorage();
-      }
+      console.error('Message send failed:', e);
+      // Already rendered from storage, so no further action needed
     }
   }
 
   function loadFromStorage() {
-    chrome.storage.local.get(['settings', 'dailyStats'], (result) => {
-      const settings = result.settings || {};
-      const stats = result.dailyStats || {};
-      const today = new Date().toLocaleDateString();
-      const todayStats = stats[today] || {};
-      renderList(settings, todayStats, {}); // Storage fallback has no snooze info
-    });
+    try {
+      chrome.storage.local.get(['settings', 'dailyStats'], (result) => {
+        if (chrome.runtime.lastError) {
+          console.error("Storage read failed:", chrome.runtime.lastError);
+          // Render with empty data to avoid blank screen
+          renderList({}, {}, {});
+          return;
+        }
+        const settings = result.settings || {};
+        const stats = result.dailyStats || {};
+        const today = new Date().toLocaleDateString();
+        const todayStats = stats[today] || {};
+        renderList(settings, todayStats, {}); // Storage fallback has no snooze info
+      });
+    } catch (e) {
+      console.error("Storage API error:", e);
+      // Failsafe render
+      renderList({}, {}, {});
+      const statusDiv = document.getElementById('status');
+      if (statusDiv) statusDiv.textContent = "Data Load Error";
+    }
   }
 
   function renderList(settings, stats, snoozeState = {}) {
-    // Remove deleted domains
-    const existingItems = document.querySelectorAll('.site-item');
-    existingItems.forEach(item => {
-      const domain = item.getAttribute('data-domain');
-      // Check if it's the global limit item or a standard domain
-      if (domain === '__global_limit__') {
-        if (!settings['__global_limit__']) item.remove();
+    try {
+      if (!settings) settings = {};
+      if (!stats) stats = {};
+
+      const settingsList = document.getElementById('settingsList');
+      if (!settingsList) return;
+
+      // Remove deleted domains
+      const existingItems = document.querySelectorAll('.site-item');
+      existingItems.forEach(item => {
+        const domain = item.getAttribute('data-domain');
+        // Check if it's the global limit item or a standard domain
+        if (domain === '__global_limit__') {
+          if (!settings['__global_limit__']) item.remove();
+        } else {
+          if (!settings[domain]) item.remove();
+        }
+      });
+
+      if (Object.keys(settings).length === 0) {
+        // Show "No Settings" message only if list is empty
+        if (document.querySelectorAll('.site-item').length === 0) {
+          settingsList.innerHTML = '<p style="text-align:center; color:#888;" id="no-settings">設定されたサイトはありません</p>';
+        }
+        return;
       } else {
-        if (!settings[domain]) item.remove();
+        const noMsg = document.getElementById('no-settings');
+        if (noMsg) noMsg.remove();
       }
-    });
 
-    if (!settings || Object.keys(settings).length === 0) {
-      if (document.querySelectorAll('.site-item').length === 0) {
-        settingsList.innerHTML = '<p style="text-align:center; color:#888;" id="no-settings">設定されたサイトはありません</p>';
-      }
-      return;
-    } else {
-      const noMsg = document.getElementById('no-settings');
-      if (noMsg) noMsg.remove();
-    }
+      // グラフ用: 最初のドメインまたは現在選択されているドメイン
+      const firstDomain = Object.keys(settings)[0];
+      const currentGraphDomain = document.querySelector('.chart-title')?.getAttribute('data-domain') || firstDomain;
+      renderGraph(currentGraphDomain);
 
-    // グラフ用: 最初のドメインまたは現在選択されているドメイン
-    const firstDomain = Object.keys(settings)[0];
-    const currentGraphDomain = document.querySelector('.chart-title')?.getAttribute('data-domain') || firstDomain;
-    renderGraph(currentGraphDomain);
+      // Global Limit Display
+      if (settings['__global_limit__']) {
+        const gl = settings['__global_limit__'];
+        const totalUsed = Object.values(stats).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0); // Safety check
+        const glMin = Math.floor(totalUsed / 60);
 
-    // Global Limit Display
-    if (settings['__global_limit__']) {
-      const gl = settings['__global_limit__'];
-      const totalUsed = Object.values(stats).reduce((a, b) => a + b, 0);
-      const glMin = Math.floor(totalUsed / 60);
-
-      let glItem = document.querySelector('.site-item[data-domain="__global_limit__"]');
-      const isOver = glMin >= gl.limit;
-      const htmlContent = `
+        let glItem = document.querySelector('.site-item[data-domain="__global_limit__"]');
+        const isOver = glMin >= gl.limit;
+        const htmlContent = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <strong>🌏 全体制限 (GLOBAL)</strong>
               <span style="font-weight:bold; color:${isOver ? 'red' : 'green'}">${glMin}分 / ${gl.limit}分</span>
@@ -150,62 +185,62 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-      if (!glItem) {
-        glItem = document.createElement('div');
-        glItem.className = 'site-item';
-        glItem.style.border = '2px solid #ff9800';
-        glItem.setAttribute('data-domain', '__global_limit__');
-        glItem.innerHTML = htmlContent;
-        // Prepend global limit
-        settingsList.prepend(glItem);
+        if (!glItem) {
+          glItem = document.createElement('div');
+          glItem.className = 'site-item';
+          glItem.style.border = '2px solid #ff9800';
+          glItem.setAttribute('data-domain', '__global_limit__');
+          glItem.innerHTML = htmlContent;
+          // Prepend global limit
+          settingsList.prepend(glItem);
 
-        // Re-attach listener
-        glItem.querySelector('.delete-btn').addEventListener('click', (e) => {
-          deleteSetting('__global_limit__');
-        });
-      } else {
-        // Update content if changed (or just innerHTML for simplicity as it lacks inputs)
-        // To avoid listener loss, we only update specific parts or accept re-attaching.
-        // For simplicity/robustness with buttons, let's update text parts specifically or use a helper.
-        // But here, re-setting innerHTML kills listeners. 
-        // So we should only update text nodes.
+          // Re-attach listener
+          glItem.querySelector('.delete-btn').addEventListener('click', (e) => {
+            deleteSetting('__global_limit__');
+          });
+        } else {
+          // Update content if changed (or just innerHTML for simplicity as it lacks inputs)
+          // To avoid listener loss, we only update specific parts or accept re-attaching.
+          // For simplicity/robustness with buttons, let's update text parts specifically or use a helper.
+          // But here, re-setting innerHTML kills listeners. 
+          // So we should only update text nodes.
 
-        glItem.querySelector('span').textContent = `${glMin}分 / ${gl.limit}分`;
-        glItem.querySelector('span').style.color = isOver ? 'red' : 'green';
-      }
-    }
-
-    for (const [domain, config] of Object.entries(settings)) {
-      if (domain === '__global_limit__') continue;
-
-      const currentSeconds = stats[domain] || 0;
-      const currentMinutes = Math.floor(currentSeconds / 60);
-      const displaySeconds = currentSeconds % 60;
-
-      const limitMinutes = config.limit;
-      const isOver = currentMinutes >= limitMinutes;
-
-      const snoozeEnd = snoozeState && (snoozeState[domain] || snoozeState['__global__'] && domain === '__global_limit__');
-      const isSnoozing = snoozeEnd && Date.now() < snoozeEnd;
-
-      let timeStr = `${currentMinutes}分 ${displaySeconds}秒`;
-      let color = isOver ? '#d32f2f' : '#388e3c';
-
-      if (isSnoozing) {
-        timeStr += ' <span style="color:#ff9800; font-size:11px;">(延長中)</span>';
-        color = '#ff9800';
-      } else if (isOver) {
-        color = '#d32f2f';
+          glItem.querySelector('span').textContent = `${glMin}分 / ${gl.limit}分`;
+          glItem.querySelector('span').style.color = isOver ? 'red' : 'green';
+        }
       }
 
-      let item = document.querySelector(`.site-item[data-domain="${domain}"]`);
+      for (const [domain, config] of Object.entries(settings)) {
+        if (domain === '__global_limit__') continue;
 
-      if (!item) {
-        item = document.createElement('div');
-        item.className = 'site-item';
-        item.setAttribute('data-domain', domain);
+        const currentSeconds = stats[domain] || 0;
+        const currentMinutes = Math.floor(currentSeconds / 60);
+        const displaySeconds = currentSeconds % 60;
 
-        item.innerHTML = `
+        const limitMinutes = config.limit;
+        const isOver = currentMinutes >= limitMinutes;
+
+        const snoozeEnd = snoozeState && (snoozeState[domain] || snoozeState['__global__'] && domain === '__global_limit__');
+        const isSnoozing = snoozeEnd && Date.now() < snoozeEnd;
+
+        let timeStr = `${currentMinutes}分 ${displaySeconds}秒`;
+        let color = isOver ? '#d32f2f' : '#388e3c';
+
+        if (isSnoozing) {
+          timeStr += ' <span style="color:#ff9800; font-size:11px;">(延長中)</span>';
+          color = '#ff9800';
+        } else if (isOver) {
+          color = '#d32f2f';
+        }
+
+        let item = document.querySelector(`.site-item[data-domain="${domain}"]`);
+
+        if (!item) {
+          item = document.createElement('div');
+          item.className = 'site-item';
+          item.setAttribute('data-domain', domain);
+
+          item.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" class="domain-row" data-d="${domain}">
               <strong>${domain}</strong>
               <span class="time-display" style="font-size:14px; font-weight:bold; color:${color}">
@@ -220,35 +255,43 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             </div>
           `;
-        settingsList.appendChild(item);
+          settingsList.appendChild(item);
 
-        // Add listeners for new item
-        item.querySelector('.domain-row').addEventListener('click', () => renderGraph(domain));
-        item.querySelector('.edit-btn').addEventListener('click', (e) => {
-          const d = e.target.getAttribute('data-domain');
-          const l = e.target.getAttribute('data-limit');
-          document.getElementById('domain').value = d;
-          document.getElementById('limit').value = l;
-          document.getElementById('domain').focus();
-          window.scrollTo(0, 0);
-          showStatus('設定を変更して「追加・更新」を押してください', '#2196f3');
-        });
-        item.querySelector('.delete-btn').addEventListener('click', (e) => {
-          const d = e.target.getAttribute('data-domain');
-          deleteSetting(d);
-        });
+          // Add listeners for new item
+          item.querySelector('.domain-row').addEventListener('click', () => renderGraph(domain));
+          item.querySelector('.edit-btn').addEventListener('click', (e) => {
+            const d = e.target.getAttribute('data-domain');
+            const l = e.target.getAttribute('data-limit');
+            document.getElementById('domain').value = d;
+            document.getElementById('limit').value = l;
+            document.getElementById('domain').focus();
+            window.scrollTo(0, 0);
+            showStatus('設定を変更して「追加・更新」を押してください', '#2196f3');
+          });
+          item.querySelector('.delete-btn').addEventListener('click', (e) => {
+            const d = e.target.getAttribute('data-domain');
+            deleteSetting(d);
+          });
 
-      } else {
-        // Update existing
-        const timeSpan = item.querySelector('.time-display');
-        timeSpan.innerHTML = timeStr; // Use innerHTML for (延長中) span
-        timeSpan.style.color = color;
+        } else {
+          // Update existing
+          const timeSpan = item.querySelector('.time-display');
+          timeSpan.innerHTML = timeStr; // Use innerHTML for (延長中) span
+          timeSpan.style.color = color;
 
-        const limitSpan = item.querySelector('.limit-display');
-        limitSpan.textContent = `制限: ${limitMinutes}分`;
+          const limitSpan = item.querySelector('.limit-display');
+          limitSpan.textContent = `制限: ${limitMinutes}分`;
 
-        // Ensure button attributes are up to date (for edit)
-        item.querySelector('.edit-btn').setAttribute('data-limit', limitMinutes);
+          // Ensure button attributes are up to date (for edit)
+          item.querySelector('.edit-btn').setAttribute('data-limit', limitMinutes);
+        }
+      }
+    } catch (e) {
+      console.error("Render Error:", e);
+      const status = document.getElementById('status');
+      if (status) {
+        status.textContent = "Render Error: " + e.message;
+        status.style.color = "red";
       }
     }
   }
@@ -452,3 +495,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Optional: Watch for dynamic changes if needed, but CSS variables handle most.
   });
 });
+

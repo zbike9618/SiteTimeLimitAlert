@@ -34,17 +34,24 @@
   --disabled-text: #80868b;
 }
 
-body {
+html, body {
+  min-width: 400px;
+  min-height: 500px;
   width: 400px;
   height: 500px;
-  /* 500px fixed height */
   margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent scrollbar flickering on resizing */
+}
+
+body {
   padding: 10px;
   box-sizing: border-box;
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: 'Helvetica Neue', Arial, sans-serif;
   padding-bottom: 60px;
+  overflow-y: auto; /* Allow body content scroll if needed */
 }
 
 h1 {
