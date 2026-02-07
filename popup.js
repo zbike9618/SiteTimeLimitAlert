@@ -11,9 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // 初期表示
   updateView();
 
-  // 1秒ごとに表示更新（リアルタイム性）
-  // 1秒ごとに表示更新（リアルタイム性）
-  setInterval(updateView, 1000);
+  // 15: 1秒ごとに表示更新（リアルタイム性）
+  const intervalId = setInterval(() => {
+    if (!chrome.runtime?.id) {
+      clearInterval(intervalId);
+      return;
+    }
+    updateView();
+  }, 1000);
 
   // Enter Key Navigation
   domainInput.addEventListener('keydown', (e) => {
@@ -51,16 +56,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateView() {
-    // バックグラウンドから最新のstatsとsettingsを取得
-    chrome.runtime.sendMessage({ action: 'getRealtimeStats' }, (response) => {
-      if (chrome.runtime.lastError) {
+    if (!chrome.runtime?.id) return; // Extension context invalid
+
+    let handled = false;
+    // Timeout for background response (Vivaldi startup measures)
+    const timeoutId = setTimeout(() => {
+      if (!handled) {
+        handled = true;
+        // console.warn('Background timeout, falling back to storage');
         loadFromStorage();
-        return;
       }
-      if (response) {
-        renderList(response.settings, response.stats, response.snoozeState);
+    }, 300);
+
+    // バックグラウンドから最新のstatsとsettingsを取得
+    try {
+      chrome.runtime.sendMessage({ action: 'getRealtimeStats' }, (response) => {
+        if (handled) return; // Already handled by timeout
+        clearTimeout(timeoutId);
+        handled = true;
+
+        if (chrome.runtime.lastError) {
+          // console.warn('Background connection failed:', chrome.runtime.lastError);
+          loadFromStorage();
+          return;
+        }
+        if (response) {
+          renderList(response.settings, response.stats, response.snoozeState);
+        }
+      });
+    } catch (e) {
+      if (!handled) {
+        clearTimeout(timeoutId);
+        handled = true;
+        // console.error('Message send failed:', e);
+        loadFromStorage();
       }
-    });
+    }
   }
 
   function loadFromStorage() {

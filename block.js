@@ -24,8 +24,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tab) {
                 chrome.tabs.remove(tab.id);
             } else {
-                // Fallback for non-tab context or if getCurrent fails
-                window.close();
+                // Flashback for Vivaldi/others: window.close() might fail or close browser
+                // Try standard close first, then hack
+                try {
+                    window.close();
+                } catch (e) {
+                    console.warn('window.close() failed, trying workaround');
+                }
+                // Vivaldi workaround:
+                window.open('', '_self').close();
             }
         });
     });

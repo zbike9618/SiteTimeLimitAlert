@@ -8,7 +8,11 @@ let snoozeState = {};
 initialize();
 
 async function initialize() {
-    await loadData();
+    try {
+        await loadData();
+    } catch (e) {
+        console.error("Failed to load data during initialization:", e);
+    }
     setupContextMenu();
     if (chrome.alarms) {
         chrome.alarms.create('saveData', { periodInMinutes: 1 });

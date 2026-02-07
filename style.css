@@ -36,7 +36,7 @@
 
 body {
   width: 400px;
-  height: 500px;
+  height: 800px;
   /* 500px fixed height */
   margin: 0;
   padding: 10px;
@@ -44,8 +44,6 @@ body {
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  overflow-x: hidden;
-  overflow-y: auto;
   padding-bottom: 60px;
 }
 
@@ -89,7 +87,6 @@ button {
   width: 100%;
   padding: 10px;
   background-color: var(--button-primary);
-  color: var(--bg-color)==#202124 ? #202124: white;
   /* Invert text color logic roughly */
   color: #fff;
   /* Simplify for now, usually white text on primary button works */
