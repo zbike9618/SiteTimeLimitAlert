@@ -75,9 +75,11 @@ async function loadData() {
     lastResetDate = data.lastResetDate;
 
     if (lastResetDate !== today) {
+        // Date changed since last session
         memoryStats = {};
         lastResetDate = today;
-        await chrome.storage.local.set({ lastResetDate: today, dailyStats: {} });
+        // Do NOT clear dailyStats here! Just update the date.
+        await chrome.storage.local.set({ lastResetDate: today });
     } else {
         memoryStats = (data.dailyStats && data.dailyStats[today]) ? data.dailyStats[today] : {};
     }
@@ -86,12 +88,17 @@ async function loadData() {
 async function saveData() {
     if (!lastResetDate) return;
     const today = new Date().toLocaleDateString();
+
+    // Check for day rollover during runtime
     if (today !== lastResetDate) {
         memoryStats = {};
         lastResetDate = today;
-        await chrome.storage.local.set({ lastResetDate: today, dailyStats: {} });
+        // Do NOT clear dailyStats here! Just update the date.
+        await chrome.storage.local.set({ lastResetDate: today });
         return;
     }
+
+    // Standard Save
     const data = await chrome.storage.local.get(['dailyStats']);
     let allStats = data.dailyStats || {};
     allStats[today] = memoryStats;
@@ -112,32 +119,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             const domain = request.domain;
             const minutes = parseInt(request.minutes || 5, 10);
 
-            // Special handling for Night Mode: Extension means Snooze
-            if (request.type === 'night') {
-                snoozeState[domain] = Date.now() + (minutes * 60 * 1000);
-                sendResponse({ success: true, newLimit: 'Snoozed' });
-                return true;
-            }
-
-            // Determine if global or local
-            let targetKey = domain;
-            if (request.type === 'global') {
-                targetKey = '__global_limit__';
-            }
-
-            if (settingsCache[targetKey]) {
-                const currentLimit = parseInt(settingsCache[targetKey].limit, 10);
-                settingsCache[targetKey].limit = currentLimit + minutes;
-
-                // Save to storage
-                chrome.storage.local.set({ settings: settingsCache }, () => {
-                    sendResponse({ success: true, newLimit: settingsCache[targetKey].limit });
-                });
-            } else {
-                console.error(`Setting for ${targetKey} not found during extension.`);
-                sendResponse({ success: false, error: '設定が見つかりませんでした (Setting not found)' });
-            }
-            return true; // async
+            // Extend now ALWAYS means "Snooze this domain for X minutes"
+            // This applies to Site Limit, Global Limit, and Night Mode.
+            // We do NOT modify the permanent settings anymore.
+            snoozeState[domain] = Date.now() + (minutes * 60 * 1000);
+            sendResponse({ success: true, newLimit: 'Snoozed' });
+            return true;
         } else if (request.action === 'snooze') {
             // Check if we need to snooze global
             // The request comes with 'domain'. If the user was blocked by 'global', we might want to snooze global.

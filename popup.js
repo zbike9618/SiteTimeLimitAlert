@@ -322,67 +322,49 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(['dailyStats'], (result) => {
       const allStats = result.dailyStats || {};
       const days = [];
+      const dataPoints = [];
+      const labels = [];
+
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        days.push(d.toLocaleDateString());
-      }
 
-      const dataPoints = days.map(day => {
-        const dayStats = allStats[day] || {};
+        // Robust Key: YYYY-MM-DD
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        // Legacy Key: toLocaleDateString() fallback
+        const keyLocale = d.toLocaleDateString();
+
+        const dayStats = allStats[key] || allStats[keyLocale] || {};
         const seconds = dayStats[domain] || 0;
-        return Math.floor(seconds / 60);
-      });
+
+        dataPoints.push(Math.floor(seconds / 60));
+        labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+        days.push(labels[labels.length - 1]); // Use label as day identifier for tooltip?
+      }
 
       const maxVal = Math.max(...dataPoints, 10);
 
-      // Check if we need to build from scratch (first run or domain switch)
-      // Check if number of bars matches
       const existingBars = container.querySelectorAll('.chart-bar');
-      const shouldRebuild = existingBars.length !== days.length;
+      // Always rebuild if simpler, or check length
+      // Simplified rebuild logic for robustness
+      container.innerHTML = '';
+      labelsContainer.innerHTML = '';
 
-      if (shouldRebuild) {
-        container.innerHTML = '';
-        labelsContainer.innerHTML = '';
+      dataPoints.forEach((val, index) => {
+        const percent = (val / maxVal) * 100;
 
-        days.forEach((day, index) => {
-          const val = dataPoints[index];
-          const percent = (val / maxVal) * 100;
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar';
+        bar.style.height = `${percent}%`;
+        bar.title = `${labels[index]}: ${val}分`;
+        container.appendChild(bar);
 
-          const bar = document.createElement('div');
-          bar.className = 'chart-bar';
-          bar.style.height = `${percent}%`;
-          bar.title = `${day}: ${val}分`;
-          container.appendChild(bar);
-
-          const label = document.createElement('div');
-          label.className = 'chart-label'; // Use class from CSS
-          // Inline styles redundant if CSS has them, but keeping for safety
-          label.style.width = '12%';
-
-          const datePart = day.split('/').pop() || day.split('-').pop();
-          label.textContent = datePart;
-          labelsContainer.appendChild(label);
-        });
-      } else {
-        // Update existing
-        days.forEach((day, index) => {
-          const val = dataPoints[index];
-          const percent = (val / maxVal) * 100;
-
-          const bar = existingBars[index];
-          if (bar) {
-            bar.style.height = `${percent}%`;
-            bar.title = `${day}: ${val}分`;
-          }
-
-          // Labels (dates) usually don't change unless day rolls over, but update anyway
-          const datePart = day.split('/').pop() || day.split('-').pop();
-          if (labelsContainer.children[index]) {
-            labelsContainer.children[index].textContent = datePart;
-          }
-        });
-      }
+        const label = document.createElement('div');
+        label.className = 'chart-label';
+        label.style.width = '12%';
+        label.textContent = labels[index];
+        labelsContainer.appendChild(label);
+      });
     });
   }
 
