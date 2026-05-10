@@ -68,9 +68,10 @@ if (chrome.alarms) {
 }
 
 async function loadData() {
-    const data = await chrome.storage.local.get(['settings', 'dailyStats', 'lastResetDate', 'nightMode']);
+    const data = await chrome.storage.local.get(['settings', 'dailyStats', 'lastResetDate', 'nightMode', 'snoozeState']);
     settingsCache = data.settings || {};
     nightModeCache = data.nightMode || null;
+    snoozeState = data.snoozeState || {};
     const today = new Date().toLocaleDateString();
     lastResetDate = data.lastResetDate;
 
@@ -102,7 +103,7 @@ async function saveData() {
     const data = await chrome.storage.local.get(['dailyStats']);
     let allStats = data.dailyStats || {};
     allStats[today] = memoryStats;
-    await chrome.storage.local.set({ dailyStats: allStats });
+    await chrome.storage.local.set({ dailyStats: allStats, snoozeState: snoozeState });
 }
 
 // Promise to track init
@@ -116,31 +117,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         } else if (request.action === 'getRealtimeStats') {
             sendResponse({ stats: memoryStats, settings: settingsCache, snoozeState: snoozeState });
         } else if (request.action === 'extendLimit') {
-            const domain = request.domain;
+            let domain = request.domain;
             const minutes = parseInt(request.minutes || 5, 10);
 
-            // Extend now ALWAYS means "Snooze this domain for X minutes"
-            // This applies to Site Limit, Global Limit, and Night Mode.
-            // We do NOT modify the permanent settings anymore.
+            // 全体制限の場合はキーを統一する
+            if (request.type === 'global' || domain === 'GLOBAL_LIMIT') {
+                domain = '__global_limit__';
+            }
+
             snoozeState[domain] = Date.now() + (minutes * 60 * 1000);
+            chrome.storage.local.set({ snoozeState: snoozeState });
             sendResponse({ success: true, newLimit: 'Snoozed' });
             return true;
         } else if (request.action === 'snooze') {
-            // Check if we need to snooze global
-            // The request comes with 'domain'. If the user was blocked by 'global', we might want to snooze global.
-            // But block.js sends the current url domain.
-            // Simplified: If the user snoozes, we just snooze that domain for 5 mins.
-            // However, if the block was GLOBAL, we should snooze GLOBAL limit?
-            // Let's check the 'type' param passed to block.html if possible, but background doesn't know context easily here.
-            // Alternative: Just snooze the domain is safer.
-            // However, to satisfy "Global limit snooze", we might need to snooze the __global_limit__ key.
-            // Let's support an explicit type in the request if provided.
-
             if (request.type === 'global') {
                 snoozeState['__global_limit__'] = Date.now() + (5 * 60 * 1000);
             } else {
                 snoozeState[request.domain] = Date.now() + (5 * 60 * 1000);
             }
+            chrome.storage.local.set({ snoozeState: snoozeState });
             sendResponse({ success: true });
         } else if (request.action === 'resetToday') {
             memoryStats = {};
@@ -316,8 +311,11 @@ function checkGlobalLimit(tab) {
         // Also check specific domain snooze
         try {
             const url = new URL(tab.url);
-            const domain = url.hostname;
-            const snoozeEndDomain = snoozeState[domain];
+            const hostname = url.hostname;
+            // 設定されているドメインと一致するか確認
+            const matchedDomain = Object.keys(settingsCache).find(d => hostname.includes(d));
+            const snoozeEndDomain = snoozeState[matchedDomain || hostname];
+
             if (snoozeEndDomain && Date.now() < snoozeEndDomain) return;
         } catch (e) { }
 
